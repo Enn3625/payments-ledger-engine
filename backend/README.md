@@ -50,3 +50,34 @@ Two related rules ride along:
 
 Because the invariant only fires at `COMMIT`, the tests commit for real instead
 of rolling back — a rollback-per-test suite would never exercise it.
+
+## How idempotency is enforced
+
+`POST /payment-intents` requires an `Idempotency-Key` header. The store is one
+row per `(endpoint, key)` in `idempotency_keys`, holding a SHA-256 of the
+canonicalised request body plus the response that was actually returned.
+
+| Situation | Result |
+| --- | --- |
+| No key | `400` before any work starts |
+| New key | Work runs, response stored, `Idempotent-Replay: false` |
+| Same key, same request, original finished | Stored response replayed verbatim with its original status code, `Idempotent-Replay: true` |
+| Same key, same request, original still running | `409` — retry shortly |
+| Same key, different request | `409` — that is a client bug |
+
+Two properties make it safe under concurrency:
+
+1. The claim is a plain `INSERT` against `UNIQUE (endpoint, key)`, so PostgreSQL
+   picks the single winner. No read-then-write race, no advisory locks.
+2. The work and the "mark this key completed" update commit in **one**
+   transaction, so a replay can only ever return a response whose side effects
+   were committed.
+
+Failed work *releases* the key instead of caching the failure, so a client
+retrying after a 5xx gets a real attempt rather than a memoised error. A claim
+left behind by a process that died is taken over after
+`IDEMPOTENCY_CLAIM_TIMEOUT_SECONDS` (default 60), so a crash cannot lock a key
+forever.
+
+The request hash is computed over the *parsed* payload, not the raw bytes:
+reordered JSON keys are the same request, but any changed value is not.

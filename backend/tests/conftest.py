@@ -15,6 +15,7 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -22,7 +23,13 @@ from app.config import get_settings
 from app.models import Account, AccountType
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-TABLES = ("ledger_entries", "transactions", "accounts")
+TABLES = (
+    "idempotency_keys",
+    "payment_intents",
+    "ledger_entries",
+    "transactions",
+    "accounts",
+)
 
 
 def _test_database_url() -> str:
@@ -58,16 +65,59 @@ def engine() -> Iterator[Engine]:
 
 
 @pytest.fixture
-def session(engine: Engine) -> Iterator[Session]:
-    factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
-    session = factory()
+def session_factory(engine: Engine) -> sessionmaker[Session]:
+    return sessionmaker(bind=engine, expire_on_commit=False, future=True)
+
+
+@pytest.fixture(autouse=True)
+def _clean_database(engine: Engine) -> Iterator[None]:
+    """Wipe every table after each test.
+
+    Autouse and last to tear down, so it runs after any session fixture has
+    closed its transaction -- TRUNCATE would otherwise block on those locks.
+    """
+    yield
+    with engine.begin() as connection:
+        connection.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+
+
+@pytest.fixture
+def session(session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    session = session_factory()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
-        with engine.begin() as connection:
-            connection.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+
+
+@pytest.fixture
+def client(session_factory: sessionmaker[Session]) -> Iterator[TestClient]:
+    """HTTP client wired to the test database instead of the dev database."""
+    from app.db import get_session, get_session_factory
+    from app.main import app
+
+    def override_factory() -> sessionmaker[Session]:
+        return session_factory
+
+    def override_session() -> Iterator[Session]:
+        request_session = session_factory()
+        try:
+            yield request_session
+            request_session.commit()
+        except Exception:
+            request_session.rollback()
+            raise
+        finally:
+            request_session.close()
+
+    app.dependency_overrides[get_session_factory] = override_factory
+    app.dependency_overrides[get_session] = override_session
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.clear()
 
 
 def make_account(
@@ -104,3 +154,9 @@ def payable(session: Session) -> Account:
 def revenue(session: Session) -> Account:
     """Revenue account: platform fees earned."""
     return make_account(session, name="revenue:platform_fees", type=AccountType.REVENUE)
+
+
+@pytest.fixture
+def merchant(payable: Account) -> Account:
+    """The account a payment intent settles into."""
+    return payable

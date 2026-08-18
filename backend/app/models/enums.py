@@ -27,6 +27,26 @@ class EntryDirection(str, Enum):
     CREDIT = "credit"
 
 
+class PaymentIntentStatus(str, Enum):
+    """Payment-domain state, distinct from the accounting state.
+
+    An intent describes money the platform expects to collect. Nothing hits the
+    ledger until a verified webhook says the money actually moved (step 3).
+    """
+
+    REQUIRES_PAYMENT = "requires_payment"
+    PROCESSING = "processing"
+    SUCCEEDED = "succeeded"
+    FAILED = "failed"
+
+
+class IdempotencyState(str, Enum):
+    #: The key is claimed and the original request is still executing.
+    IN_PROGRESS = "in_progress"
+    #: The response is stored and replayable.
+    COMPLETED = "completed"
+
+
 def pg_enum(enum_cls: type[Enum], name: str) -> SAEnum:
     """Native PG enum storing the lowercase *values*, not the member names."""
     return SAEnum(
@@ -40,6 +60,8 @@ def pg_enum(enum_cls: type[Enum], name: str) -> SAEnum:
 ACCOUNT_TYPE_ENUM = pg_enum(AccountType, "account_type")
 TRANSACTION_STATUS_ENUM = pg_enum(TransactionStatus, "transaction_status")
 ENTRY_DIRECTION_ENUM = pg_enum(EntryDirection, "entry_direction")
+PAYMENT_INTENT_STATUS_ENUM = pg_enum(PaymentIntentStatus, "payment_intent_status")
+IDEMPOTENCY_STATE_ENUM = pg_enum(IdempotencyState, "idempotency_state")
 
 #: Account types whose balance increases on the debit side. The rest
 #: (liability, equity, revenue) increase on the credit side.

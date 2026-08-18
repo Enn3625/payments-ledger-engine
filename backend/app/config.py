@@ -16,6 +16,10 @@ class Settings(BaseSettings):
     # (paise for INR), never floats -- see app/models/ledger_entry.py.
     base_currency: str = "INR"
 
+    # An idempotency claim older than this belongs to a request that died
+    # mid-flight; the next caller with the same key takes it over.
+    idempotency_claim_timeout_seconds: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:
