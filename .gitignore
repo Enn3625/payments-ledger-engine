@@ -1,0 +1,170 @@
+# ---------------------------------------------------------------------------
+# Secrets & local config
+# ---------------------------------------------------------------------------
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# ---------------------------------------------------------------------------
+# Python / FastAPI (backend)
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib64/
+parts/
+sdist/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# Package managers / tooling caches
+.pdm-python
+.pdm-build/
+__pypackages__/
+.uv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Testing & type checking
+.pytest_cache/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+nosetests.xml
+*.cover
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+.ruff_cache/
+
+# Celery / task queues
+celerybeat-schedule
+celerybeat.pid
+
+# Local databases (SQLite dev/test)
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+
+# Alembic: keep versions/ tracked, ignore only local overrides
+alembic.ini.local
+
+# ---------------------------------------------------------------------------
+# Node / React (frontend)
+# ---------------------------------------------------------------------------
+node_modules/
+.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# Build output
+dist/
+dist-ssr/
+build/
+out/
+.next/
+.nuxt/
+.output/
+.svelte-kit/
+.vercel/
+.netlify/
+
+# Bundler / framework caches
+.vite/
+.parcel-cache/
+.turbo/
+.eslintcache
+.stylelintcache
+*.tsbuildinfo
+
+# Test output
+coverage/
+.nyc_output/
+playwright-report/
+test-results/
+blob-report/
+/playwright/.cache/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Local runtime state
+*.pid
+*.seed
+*.pid.lock
+
+# ---------------------------------------------------------------------------
+# Docker / infra
+# ---------------------------------------------------------------------------
+docker-compose.override.yml
+.docker/
+*.tfstate
+*.tfstate.*
+.terraform/
+
+# ---------------------------------------------------------------------------
+# Editors & OS
+# ---------------------------------------------------------------------------
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json.example
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ---------------------------------------------------------------------------
+# Misc
+# ---------------------------------------------------------------------------
+.cache/
+tmp/
+temp/
+*.bak
+*.orig
