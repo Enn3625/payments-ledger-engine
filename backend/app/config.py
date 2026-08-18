@@ -20,6 +20,18 @@ class Settings(BaseSettings):
     # mid-flight; the next caller with the same key takes it over.
     idempotency_claim_timeout_seconds: int = 60
 
+    # Shared secret the payment provider signs webhook payloads with. Override
+    # in every deployed environment -- this default is for local dev only.
+    webhook_secret: str = "whsec_local_dev_secret"
+    # Signatures older than this are refused, so a captured payload cannot be
+    # replayed days later even though its HMAC is still valid.
+    webhook_timestamp_tolerance_seconds: int = 300
+
+    # Well-known accounts the capture posting touches. Created by the seed
+    # script; overridable so a deployment can use its own naming.
+    cash_account_name: str = "assets:cash"
+    fee_revenue_account_name: str = "revenue:platform_fees"
+
 
 @lru_cache
 def get_settings() -> Settings:

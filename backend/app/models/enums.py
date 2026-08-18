@@ -47,6 +47,17 @@ class IdempotencyState(str, Enum):
     COMPLETED = "completed"
 
 
+class WebhookEventStatus(str, Enum):
+    #: Recorded, effects not applied yet.
+    RECEIVED = "received"
+    #: Effects applied. Terminal: a redelivery of this event is a no-op.
+    PROCESSED = "processed"
+    #: Recognised but irrelevant (an event type we do not act on).
+    IGNORED = "ignored"
+    #: Verified and recorded, but the effects could not be applied. Retryable.
+    FAILED = "failed"
+
+
 def pg_enum(enum_cls: type[Enum], name: str) -> SAEnum:
     """Native PG enum storing the lowercase *values*, not the member names."""
     return SAEnum(
@@ -62,6 +73,7 @@ TRANSACTION_STATUS_ENUM = pg_enum(TransactionStatus, "transaction_status")
 ENTRY_DIRECTION_ENUM = pg_enum(EntryDirection, "entry_direction")
 PAYMENT_INTENT_STATUS_ENUM = pg_enum(PaymentIntentStatus, "payment_intent_status")
 IDEMPOTENCY_STATE_ENUM = pg_enum(IdempotencyState, "idempotency_state")
+WEBHOOK_EVENT_STATUS_ENUM = pg_enum(WebhookEventStatus, "webhook_event_status")
 
 #: Account types whose balance increases on the debit side. The rest
 #: (liability, equity, revenue) increase on the credit side.

@@ -24,6 +24,7 @@ from app.models import Account, AccountType
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
 TABLES = (
+    "webhook_events",
     "idempotency_keys",
     "payment_intents",
     "ledger_entries",
@@ -154,6 +155,12 @@ def payable(session: Session) -> Account:
 def revenue(session: Session) -> Account:
     """Revenue account: platform fees earned."""
     return make_account(session, name="revenue:platform_fees", type=AccountType.REVENUE)
+
+
+@pytest.fixture
+def chart_of_accounts(cash: Account, payable: Account, revenue: Account) -> dict[str, Account]:
+    """The accounts a capture posting needs, under their configured names."""
+    return {"cash": cash, "payable": payable, "revenue": revenue}
 
 
 @pytest.fixture

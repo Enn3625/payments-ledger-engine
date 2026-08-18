@@ -18,6 +18,7 @@ from app.models.enums import PAYMENT_INTENT_STATUS_ENUM, PaymentIntentStatus
 
 if TYPE_CHECKING:
     from app.models.account import Account
+    from app.models.transaction import Transaction
 
 
 class PaymentIntent(TimestampMixin, Base):
@@ -43,6 +44,14 @@ class PaymentIntent(TimestampMixin, Base):
     #: Caller-supplied order identifier, echoed back on webhooks.
     reference: Mapped[str | None] = mapped_column(String(128), nullable=True)
     description: Mapped[str | None] = mapped_column(String(256), nullable=True)
+    #: The ledger transaction that captured this intent. UNIQUE, so an intent
+    #: can never be captured onto the ledger twice, whatever the caller does.
+    transaction_id: Mapped[uuid.UUID | None] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("transactions.id", ondelete="RESTRICT"),
+        nullable=True,
+        unique=True,
+    )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=text("now()"),
@@ -51,6 +60,7 @@ class PaymentIntent(TimestampMixin, Base):
     )
 
     merchant_account: Mapped["Account"] = relationship()
+    transaction: Mapped["Transaction | None"] = relationship()
 
     __table_args__ = (
         CheckConstraint("amount > 0", name="amount_positive"),

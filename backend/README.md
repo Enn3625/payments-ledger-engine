@@ -81,3 +81,52 @@ forever.
 
 The request hash is computed over the *parsed* payload, not the raw bytes:
 reordered JSON keys are the same request, but any changed value is not.
+
+## How webhooks are secured and applied
+
+`POST /webhooks/payment-events` takes a Stripe-style signature header:
+
+```
+X-Webhook-Signature: t=<unix seconds>,v1=<hex hmac-sha256 of "{t}.{raw body}">
+```
+
+Three details do the security work:
+
+- The HMAC covers the **raw request bytes**, which is why the route reads the
+  body as `bytes` and parses it itself. Verifying a re-serialised body would
+  accept payloads whose bytes differ from what the provider signed.
+- Comparison uses `hmac.compare_digest`, so the digest cannot be walked byte by
+  byte with a timing oracle.
+- The timestamp is *inside* the signed payload and must be within
+  `WEBHOOK_TIMESTAMP_TOLERANCE_SECONDS`. Without it, a payload captured off the
+  wire stays replayable forever, because its signature never expires.
+
+Every signature failure returns the same `401` body, so a prober cannot learn
+which check rejected it.
+
+### Applying an event exactly once
+
+`payment.captured` is the only event that posts to the ledger:
+
+| Account | Direction | Amount |
+| --- | --- | --- |
+| `assets:cash` | debit | full captured amount |
+| merchant account (from the intent) | credit | amount − fee |
+| `revenue:platform_fees` | credit | fee, if any |
+
+Two independent guards stop a redelivery from moving money twice:
+
+1. `webhook_events.event_id` is UNIQUE — the same event redelivered returns the
+   original outcome with `duplicate: true` and touches nothing.
+2. `payment_intents.transaction_id` is UNIQUE — even a *different* event id
+   cannot attach a second ledger transaction to the same intent.
+
+Guard 1 is the fast path; guard 2 still holds if an event id is forged, reused,
+or the provider re-sends a capture under a new id.
+
+Effects and the "this event is processed" write commit in one transaction, so
+there is no state where the ledger moved but the event log disagrees. Failures
+are stored as `failed` with the payload and error, ready for
+`retry_event()` — the function the admin retry button will call in step 6.
+Unknown event types are recorded as `ignored` and acknowledged, so a provider
+adding a new type never starts failing deliveries.

@@ -8,7 +8,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.api import payment_intents
+from app.api import payment_intents, webhooks
 from app.config import get_settings
 from app.db import get_session
 
@@ -22,6 +22,7 @@ app = FastAPI(
 
 
 app.include_router(payment_intents.router)
+app.include_router(webhooks.router)
 
 
 @app.get("/health", tags=["ops"])
