@@ -37,9 +37,7 @@ ACCOUNT_TYPE = postgresql.ENUM(
 TRANSACTION_STATUS = postgresql.ENUM(
     "pending", "posted", "failed", name="transaction_status", create_type=False
 )
-ENTRY_DIRECTION = postgresql.ENUM(
-    "debit", "credit", name="entry_direction", create_type=False
-)
+ENTRY_DIRECTION = postgresql.ENUM("debit", "credit", name="entry_direction", create_type=False)
 
 CURRENCY_REGEX = r"currency ~ '^[A-Z]{3}$'"
 

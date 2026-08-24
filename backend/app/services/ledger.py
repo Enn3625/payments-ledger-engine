@@ -22,6 +22,7 @@ from sqlalchemy.orm import Session
 from app.models import (
     NORMAL_DEBIT_TYPES,
     Account,
+    AccountType,
     EntryDirection,
     LedgerEntry,
     Transaction,
@@ -166,6 +167,59 @@ class TrialBalance:
     @property
     def is_balanced(self) -> bool:
         return self.total_debits == self.total_credits
+
+
+@dataclass(frozen=True, slots=True)
+class AccountBalance:
+    """One row of the balances view."""
+
+    account_id: uuid.UUID
+    name: str
+    type: AccountType
+    currency: str
+    debits: int
+    credits: int
+    #: Signed by the normal balance side, so a healthy account reads positive.
+    balance: int
+    entry_count: int
+
+
+def account_balances(session: Session) -> list[AccountBalance]:
+    """Every account with its totals, in one grouped query rather than N+1."""
+    totals = session.execute(
+        select(
+            Account,
+            func.coalesce(
+                func.sum(LedgerEntry.amount).filter(LedgerEntry.direction == EntryDirection.DEBIT),
+                0,
+            ),
+            func.coalesce(
+                func.sum(LedgerEntry.amount).filter(LedgerEntry.direction == EntryDirection.CREDIT),
+                0,
+            ),
+            func.count(LedgerEntry.id),
+        )
+        .outerjoin(LedgerEntry, LedgerEntry.account_id == Account.id)
+        .group_by(Account.id)
+        .order_by(Account.name)
+    ).all()
+
+    balances = []
+    for account, debits, credits, entry_count in totals:
+        signed = debits - credits if account.type in NORMAL_DEBIT_TYPES else credits - debits
+        balances.append(
+            AccountBalance(
+                account_id=account.id,
+                name=account.name,
+                type=account.type,
+                currency=account.currency,
+                debits=debits,
+                credits=credits,
+                balance=signed,
+                entry_count=entry_count,
+            )
+        )
+    return balances
 
 
 def trial_balance(session: Session) -> TrialBalance:

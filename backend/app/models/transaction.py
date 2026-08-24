@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import CheckConstraint, DateTime, String, text
+from sqlalchemy import CheckConstraint, DateTime, Index, String, text
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +41,8 @@ class Transaction(TimestampMixin, Base):
             "(status = 'posted') = (posted_at IS NOT NULL)",
             name="posted_at_matches_status",
         ),
+        Index("ix_transactions_created_at", "created_at"),
+        Index("ix_transactions_status", "status"),
     )
 
     def __repr__(self) -> str:  # pragma: no cover - debugging aid

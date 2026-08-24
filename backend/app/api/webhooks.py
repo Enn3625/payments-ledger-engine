@@ -14,15 +14,19 @@ below is the opposite -- a human action, so it needs a human identity.
 """
 
 import json
+import uuid
+from datetime import datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
-from pydantic import ValidationError
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, status
+from pydantic import BaseModel, ConfigDict, ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.api.deps import AdminUser
+from app.api.deps import AdminUser, CurrentUser
 from app.config import get_settings
-from app.db import get_session_factory
+from app.db import get_session, get_session_factory
+from app.models import WebhookEvent, WebhookEventStatus
 from app.schemas.webhook import WebhookEnvelope, WebhookReceipt
 from app.services.signatures import (
     SIGNATURE_HEADER,
@@ -101,6 +105,36 @@ def receive_payment_event(
         transaction_id=outcome.transaction_id,
         payment_intent_id=outcome.payment_intent_id,
     )
+
+
+class WebhookEventRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    event_id: str
+    event_type: str
+    status: WebhookEventStatus
+    attempts: int
+    last_error: str | None
+    transaction_id: uuid.UUID | None
+    payment_intent_id: uuid.UUID | None
+    created_at: datetime
+    processed_at: datetime | None
+
+
+@router.get("/events", response_model=list[WebhookEventRead])
+def list_webhook_events(
+    session: Annotated[Session, Depends(get_session)],
+    _user: CurrentUser,
+    status_filter: Annotated[WebhookEventStatus | None, Query(alias="status")] = None,
+    limit: Annotated[int, Query(ge=1, le=200)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> list[WebhookEvent]:
+    """The delivery log, newest first. Readable by any authenticated user."""
+    statement = select(WebhookEvent).order_by(WebhookEvent.created_at.desc())
+    if status_filter is not None:
+        statement = statement.where(WebhookEvent.status == status_filter)
+    return list(session.scalars(statement.limit(limit).offset(offset)).all())
 
 
 @router.post(

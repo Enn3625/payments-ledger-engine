@@ -39,12 +39,10 @@ class IdempotencyKey(TimestampMixin, Base):
     response_snapshot: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     #: The resource the original request produced, for traceability.
     resource_id: Mapped[uuid.UUID | None] = mapped_column(PGUUID(as_uuid=True), nullable=True)
-    completed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("endpoint", "key", name="endpoint_key"),
+        UniqueConstraint("endpoint", "key", name="uq_idempotency_keys_endpoint_key"),
         # A completed row must carry a replayable response; an in-progress row
         # must not pretend to have one.
         CheckConstraint(

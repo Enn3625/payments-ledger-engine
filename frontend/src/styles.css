@@ -1,0 +1,381 @@
+/*
+ * Clean and functional on purpose. This dashboard exists to make the ledger
+ * legible, not to be the headline -- so: one accent colour, numbers in a
+ * monospace face so columns line up, and enough contrast to read at a glance.
+ */
+
+:root {
+  --bg: #10131a;
+  --panel: #171b24;
+  --panel-edge: #232937;
+  --text: #e6e9ef;
+  --text-dim: #8b93a7;
+  --accent: #6ea8fe;
+  --ok: #4ade80;
+  --warn: #fbbf24;
+  --bad: #f87171;
+  --flag: #c084fc;
+  --radius: 10px;
+  --mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1 {
+  font-size: 1.35rem;
+  margin: 0;
+}
+
+h2 {
+  font-size: 1rem;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.subtitle {
+  margin: 0.25rem 0 0;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+
+.dim {
+  color: var(--text-dim);
+}
+
+.strong {
+  font-weight: 600;
+}
+
+.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.boot {
+  padding: 3rem;
+  color: var(--text-dim);
+}
+
+/* ---------------------------------------------------------------- login */
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 1.5rem;
+}
+
+.login-card {
+  width: min(400px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.login-card label {
+  margin-top: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--text-dim);
+}
+
+.login-card .hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.45;
+}
+
+input[type="email"],
+input[type="password"] {
+  background: #0d1017;
+  border: 1px solid var(--panel-edge);
+  border-radius: 6px;
+  color: var(--text);
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+}
+
+input:focus-visible,
+button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+button {
+  background: var(--accent);
+  color: #0b0e14;
+  border: 0;
+  border-radius: 6px;
+  padding: 0.5rem 0.85rem;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-card button {
+  margin-top: 1rem;
+  padding: 0.6rem;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--panel-edge);
+}
+
+button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* ------------------------------------------------------------- layout */
+.app {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--panel-edge);
+}
+
+.app-header-right {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.panels {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 1.25rem;
+}
+
+.app-footer {
+  margin-top: 2rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--panel-edge);
+  color: var(--text-dim);
+  font-size: 0.8rem;
+}
+
+/* --------------------------------------------------------------- card */
+.card {
+  background: var(--panel);
+  border: 1px solid var(--panel-edge);
+  border-radius: var(--radius);
+  padding: 1.1rem 1.25rem 1.25rem;
+}
+
+.card-header {
+  display: flex;
+  gap: 1rem;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.card-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.trial-balance {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+/* -------------------------------------------------------------- table */
+.table-scroll {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+th {
+  text-align: left;
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+  padding: 0 0.6rem 0.5rem;
+  border-bottom: 1px solid var(--panel-edge);
+  white-space: nowrap;
+}
+
+td {
+  padding: 0.55rem 0.6rem;
+  border-bottom: 1px solid rgba(35, 41, 55, 0.6);
+  vertical-align: top;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+tbody tr:hover {
+  background: rgba(110, 168, 254, 0.05);
+}
+
+.row-flagged {
+  background: rgba(192, 132, 252, 0.07);
+}
+
+/* Entry list inside a transaction row: shows both sides of the posting. */
+.entries {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.entries li {
+  display: grid;
+  grid-template-columns: 1.6rem minmax(9rem, 1fr) auto;
+  gap: 0.5rem;
+  align-items: baseline;
+}
+
+.dir {
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+}
+
+.dir-debit {
+  color: var(--accent);
+}
+
+.dir-credit {
+  color: var(--ok);
+}
+
+.retry-cell {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  font-size: 0.78rem;
+}
+
+.retry-cell button {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.78rem;
+}
+
+/* -------------------------------------------------------------- badges */
+.badge {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.badge + .badge {
+  margin-left: 0.3rem;
+}
+
+.badge-ok {
+  color: var(--ok);
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+.badge-warn {
+  color: var(--warn);
+  background: rgba(251, 191, 36, 0.12);
+  border-color: rgba(251, 191, 36, 0.3);
+}
+
+.badge-bad {
+  color: var(--bad);
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+.badge-flag {
+  color: var(--flag);
+  background: rgba(192, 132, 252, 0.12);
+  border-color: rgba(192, 132, 252, 0.3);
+}
+
+.badge-muted {
+  color: var(--text-dim);
+  background: rgba(139, 147, 167, 0.12);
+  border-color: rgba(139, 147, 167, 0.25);
+}
+
+/* ------------------------------------------------------- states */
+.banner {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+
+.banner-error {
+  color: var(--bad);
+  background: rgba(248, 113, 113, 0.1);
+  border: 1px solid rgba(248, 113, 113, 0.28);
+}
+
+.error-text {
+  color: var(--bad);
+  font-size: 0.8rem;
+}
+
+.empty {
+  margin: 0;
+  padding: 1.25rem 0;
+  color: var(--text-dim);
+  font-size: 0.87rem;
+}

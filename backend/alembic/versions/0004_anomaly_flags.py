@@ -62,9 +62,7 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id", name="pk_anomaly_flags"),
         # One flag per rule per transaction: re-evaluating the same capture
         # cannot pile up duplicates of the same finding.
-        sa.UniqueConstraint(
-            "rule", "transaction_id", name="uq_anomaly_flags_rule_transaction"
-        ),
+        sa.UniqueConstraint("rule", "transaction_id", name="uq_anomaly_flags_rule_transaction"),
     )
     op.create_index("ix_anomaly_flags_created_at", "anomaly_flags", ["created_at"])
     op.create_index("ix_anomaly_flags_rule", "anomaly_flags", ["rule"])

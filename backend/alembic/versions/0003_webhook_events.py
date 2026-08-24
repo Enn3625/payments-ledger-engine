@@ -100,9 +100,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_constraint(
-        "uq_payment_intents_transaction_id", "payment_intents", type_="unique"
-    )
+    op.drop_constraint("uq_payment_intents_transaction_id", "payment_intents", type_="unique")
     op.drop_constraint(
         "fk_payment_intents_transaction_id_transactions", "payment_intents", type_="foreignkey"
     )

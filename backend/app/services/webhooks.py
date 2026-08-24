@@ -217,9 +217,7 @@ def _apply(
         # Unknown types are recorded and acknowledged, never rejected: a
         # provider adding a new event type must not start failing deliveries.
         event.status = WebhookEventStatus.IGNORED
-        return WebhookOutcome(
-            event_id=event.event_id, status=event.status, duplicate=False
-        )
+        return WebhookOutcome(event_id=event.event_id, status=event.status, duplicate=False)
 
     handler(session, event, envelope, settings)
 
@@ -244,9 +242,7 @@ def _handle_capture(
     intent = _lock_intent(session, data.payment_intent_id)
 
     if intent.transaction_id is not None or intent.status is PaymentIntentStatus.SUCCEEDED:
-        raise IntentNotCapturableError(
-            f"payment intent {intent.id} has already been captured"
-        )
+        raise IntentNotCapturableError(f"payment intent {intent.id} has already been captured")
     if intent.status is PaymentIntentStatus.FAILED:
         raise IntentNotCapturableError(f"payment intent {intent.id} has already failed")
     if data.amount != intent.amount:

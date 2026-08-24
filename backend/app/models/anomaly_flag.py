@@ -55,7 +55,7 @@ class AnomalyFlag(TimestampMixin, Base):
     __table_args__ = (
         # One flag per rule per transaction, so re-evaluating cannot pile up
         # duplicates of the same finding.
-        UniqueConstraint("rule", "transaction_id", name="rule_transaction"),
+        UniqueConstraint("rule", "transaction_id", name="uq_anomaly_flags_rule_transaction"),
         Index("ix_anomaly_flags_created_at", "created_at"),
         Index("ix_anomaly_flags_rule", "rule"),
     )

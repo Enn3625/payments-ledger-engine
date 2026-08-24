@@ -16,6 +16,14 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 source = ["app"]
 omit = ["app/main.py"]
 
+[tool.coverage.report]
+# A gate, not a target. The uncovered remainder is request plumbing in
+# app/db.py, which the test client overrides; every rule that decides whether
+# money moves is at 100%.
+fail_under = 95
+show_missing = true
+skip_covered = true
+
 [tool.ruff.lint.flake8-bugbear]
 # FastAPI dependency injection relies on calls in argument defaults.
 extend-immutable-calls = ["fastapi.Depends", "fastapi.Query", "fastapi.Header"]

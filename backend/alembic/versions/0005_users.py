@@ -32,9 +32,7 @@ def upgrade() -> None:
         # bcrypt output is always 60 characters.
         sa.Column("password_hash", sa.String(length=60), nullable=False),
         sa.Column("role", USER_ROLE, nullable=False),
-        sa.Column(
-            "is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False
-        ),
+        sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),

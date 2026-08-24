@@ -122,9 +122,7 @@ def get_user_by_id(session: Session, user_id: str) -> User | None:
     return session.get(User, parsed)
 
 
-def create_user(
-    session: Session, *, email: str, password: str, role: UserRole
-) -> User:
+def create_user(session: Session, *, email: str, password: str, role: UserRole) -> User:
     """Create a user with a hashed password. Flushes, does not commit."""
     user = User(
         email=email.strip().lower(),

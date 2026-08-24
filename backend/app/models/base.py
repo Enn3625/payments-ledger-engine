@@ -6,6 +6,9 @@ from sqlalchemy import DateTime, MetaData, func
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 # Predictable constraint names so Alembic migrations stay readable/reversible.
+# Note: only the templates containing %(constraint_name)s rewrite an explicit
+# name. `uq` does not, so a UniqueConstraint given a name keeps it verbatim --
+# which is why those are spelled out in full in the models.
 NAMING_CONVENTION = {
     "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",

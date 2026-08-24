@@ -64,12 +64,10 @@ class WebhookEvent(Base, TimestampMixin):
         Integer, nullable=False, default=0, server_default=text("0")
     )
     last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
-    processed_at: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True), nullable=True
-    )
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     __table_args__ = (
-        UniqueConstraint("event_id", name="event_id"),
+        UniqueConstraint("event_id", name="uq_webhook_events_event_id"),
         CheckConstraint(
             "(status = 'processed') = (processed_at IS NOT NULL)",
             name="processed_at_matches_status",

@@ -179,6 +179,23 @@ production verification path cannot drift apart. Exit status is non-zero when
 the API rejects the event, which makes it usable in scripts.
 
 
+## Endpoints the dashboard reads
+
+| Route | Role | Notes |
+| --- | --- | --- |
+| `GET /accounts/balances` | viewer | Per-account totals plus the trial balance, in one grouped query |
+| `GET /transactions` | viewer | Newest first, with entries and anomaly flags; `?flagged_only=true` |
+| `GET /anomaly-flags` | viewer | `?rule=` filter |
+| `GET /webhooks/events` | viewer | Delivery log; `?status=` filter |
+| `POST /webhooks/events/{id}/retry` | admin | Replays the stored payload |
+
+Both list endpoints load their related rows in a fixed number of queries rather
+than one per row, so the page cost does not grow with the ledger.
+
+CORS is configured, not wildcarded: `CORS_ORIGINS` is a comma-separated
+allowlist. `*` would let any site on the internet call this API with a user's
+token.
+
 ## Auth and RBAC
 
 JWT bearer tokens, two roles, and no self-service signup: an API that mints its

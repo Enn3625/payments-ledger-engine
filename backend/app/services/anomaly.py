@@ -52,9 +52,7 @@ def _amount_threshold_rule(
     )
 
 
-def _velocity_rule(
-    session: Session, context: CaptureContext, settings: Settings
-) -> str | None:
+def _velocity_rule(session: Session, context: CaptureContext, settings: Settings) -> str | None:
     window_minutes = settings.anomaly_velocity_window_minutes
     limit = settings.anomaly_velocity_max_captures
     window_start = datetime.now(UTC) - timedelta(minutes=window_minutes)
