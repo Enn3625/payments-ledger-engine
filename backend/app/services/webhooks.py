@@ -16,6 +16,9 @@ There is no state where the ledger moved but the event log disagrees.
 
 Failures are recorded rather than swallowed: the event stays as `failed` with
 its payload and error, so it can be retried later from the dashboard.
+
+Anomaly rules are evaluated on capture, in the same transaction. Their flags
+are observations only: they never stop a capture from posting.
 """
 
 import uuid
@@ -38,6 +41,7 @@ from app.models import (
     WebhookEventStatus,
 )
 from app.schemas.webhook import CaptureData, FailureData, WebhookEnvelope
+from app.services.anomaly import evaluate_capture
 from app.services.ledger import credit, debit, post_transaction
 
 #: Statuses that mean "this delivery is settled, do not act on it again".
@@ -279,6 +283,16 @@ def _handle_capture(
     intent.transaction_id = transaction.id
     event.transaction_id = transaction.id
     event.payment_intent_id = intent.id
+
+    # Rules run inside this transaction, so a flag and the capture it
+    # describes commit together. A rule firing never blocks the capture.
+    evaluate_capture(
+        session,
+        intent=intent,
+        transaction=transaction,
+        amount=data.amount,
+        settings=settings,
+    )
 
 
 def _handle_failure(

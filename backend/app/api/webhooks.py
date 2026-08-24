@@ -7,6 +7,10 @@ bytes differ from what the provider actually signed.
 
 The async dependency reads the body on the event loop; the endpoint itself
 stays synchronous and runs in the threadpool, like the rest of the API.
+
+The inbound route carries no bearer token on purpose: the payment provider has
+no login, and the HMAC signature *is* its authentication. The admin retry route
+below is the opposite -- a human action, so it needs a human identity.
 """
 
 import json
@@ -16,6 +20,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.api.deps import AdminUser
 from app.config import get_settings
 from app.db import get_session_factory
 from app.schemas.webhook import WebhookEnvelope, WebhookReceipt
@@ -24,7 +29,12 @@ from app.services.signatures import (
     SignatureError,
     verify_signature,
 )
-from app.services.webhooks import WebhookProcessingError, handle_event
+from app.services.webhooks import (
+    UnknownWebhookEventError,
+    WebhookProcessingError,
+    handle_event,
+    retry_event,
+)
 
 router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 
@@ -82,6 +92,45 @@ def receive_payment_event(
     except WebhookProcessingError as exc:
         # Recorded as `failed` and retryable; the provider gets a hard error
         # rather than a silent acknowledgement.
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
+
+    return WebhookReceipt(
+        event_id=outcome.event_id,
+        status=outcome.status,
+        duplicate=outcome.duplicate,
+        transaction_id=outcome.transaction_id,
+        payment_intent_id=outcome.payment_intent_id,
+    )
+
+
+@router.post(
+    "/events/{event_id}/retry",
+    response_model=WebhookReceipt,
+    responses={
+        401: {"description": "Missing or invalid bearer token"},
+        403: {"description": "Requires the admin role"},
+        404: {"description": "No such webhook event"},
+        422: {"description": "The event still cannot be applied"},
+    },
+)
+def retry_webhook_event(
+    event_id: str,
+    session_factory: Annotated[sessionmaker[Session], Depends(get_session_factory)],
+    _admin: AdminUser,
+) -> WebhookReceipt:
+    """Reprocess a stored event. Admin only.
+
+    The stored payload is replayed as-is, so a retry cannot smuggle in data the
+    provider never signed. Retrying an already-processed event is a no-op that
+    reports `duplicate: true` rather than posting to the ledger again.
+    """
+    settings = get_settings()
+
+    try:
+        outcome = retry_event(session_factory, event_id=event_id, settings=settings)
+    except UnknownWebhookEventError as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, str(exc)) from exc
+    except WebhookProcessingError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
 
     return WebhookReceipt(

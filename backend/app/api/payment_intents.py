@@ -11,6 +11,7 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Response, status
 from sqlalchemy.orm import Session, sessionmaker
 
+from app.api.deps import AdminUser, CurrentUser
 from app.config import get_settings
 from app.db import get_session, get_session_factory
 from app.models import PaymentIntent
@@ -39,6 +40,8 @@ REPLAY_HEADER = "Idempotent-Replay"
     response_model=PaymentIntentRead,
     status_code=status.HTTP_201_CREATED,
     responses={
+        401: {"description": "Missing or invalid bearer token"},
+        403: {"description": "Requires the admin role"},
         400: {"description": "Idempotency-Key header missing or malformed"},
         409: {"description": "Idempotency-Key reused for a different request, or still in flight"},
         422: {"description": "Unknown merchant account, or currency mismatch"},
@@ -48,6 +51,7 @@ def create_intent(
     payload: PaymentIntentCreate,
     response: Response,
     session_factory: Annotated[sessionmaker[Session], Depends(get_session_factory)],
+    _admin: AdminUser,
     idempotency_key: Annotated[str | None, Header(alias="Idempotency-Key")] = None,
 ) -> dict[str, Any]:
     settings = get_settings()
@@ -83,6 +87,7 @@ def create_intent(
 def get_intent(
     intent_id: uuid.UUID,
     session: Annotated[Session, Depends(get_session)],
+    _user: CurrentUser,
 ) -> PaymentIntent:
     intent = session.get(PaymentIntent, intent_id)
     if intent is None:

@@ -32,6 +32,20 @@ class Settings(BaseSettings):
     cash_account_name: str = "assets:cash"
     fee_revenue_account_name: str = "revenue:platform_fees"
 
+    # Anomaly rules. Thresholds are configuration, not code, so tuning them
+    # never means a redeploy of the rule engine.
+    # Flag a single capture above INR 5,000.00 (in paise).
+    anomaly_amount_threshold: int = 500_000
+    # Flag more than N captures against one account inside the window.
+    anomaly_velocity_max_captures: int = 5
+    anomaly_velocity_window_minutes: int = 10
+
+    # JWT signing. Override in every deployed environment: anyone holding this
+    # value can mint a valid admin token.
+    jwt_secret: str = "jwt_local_dev_secret_change_me"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:
