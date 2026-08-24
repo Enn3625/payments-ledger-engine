@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
+from app.api import anomaly_flags, auth, payment_intents, webhooks
 from app.config import get_settings
 from app.db import get_session
 
@@ -18,6 +19,12 @@ app = FastAPI(
     version="0.1.0",
     description="Double-entry ledger with idempotent intents and verified webhooks.",
 )
+
+
+app.include_router(anomaly_flags.router)
+app.include_router(auth.router)
+app.include_router(payment_intents.router)
+app.include_router(webhooks.router)
 
 
 @app.get("/health", tags=["ops"])

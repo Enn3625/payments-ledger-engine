@@ -16,6 +16,36 @@ class Settings(BaseSettings):
     # (paise for INR), never floats -- see app/models/ledger_entry.py.
     base_currency: str = "INR"
 
+    # An idempotency claim older than this belongs to a request that died
+    # mid-flight; the next caller with the same key takes it over.
+    idempotency_claim_timeout_seconds: int = 60
+
+    # Shared secret the payment provider signs webhook payloads with. Override
+    # in every deployed environment -- this default is for local dev only.
+    webhook_secret: str = "whsec_local_dev_secret"
+    # Signatures older than this are refused, so a captured payload cannot be
+    # replayed days later even though its HMAC is still valid.
+    webhook_timestamp_tolerance_seconds: int = 300
+
+    # Well-known accounts the capture posting touches. Created by the seed
+    # script; overridable so a deployment can use its own naming.
+    cash_account_name: str = "assets:cash"
+    fee_revenue_account_name: str = "revenue:platform_fees"
+
+    # Anomaly rules. Thresholds are configuration, not code, so tuning them
+    # never means a redeploy of the rule engine.
+    # Flag a single capture above INR 5,000.00 (in paise).
+    anomaly_amount_threshold: int = 500_000
+    # Flag more than N captures against one account inside the window.
+    anomaly_velocity_max_captures: int = 5
+    anomaly_velocity_window_minutes: int = 10
+
+    # JWT signing. Override in every deployed environment: anyone holding this
+    # value can mint a valid admin token.
+    jwt_secret: str = "jwt_local_dev_secret_change_me"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 60
+
 
 @lru_cache
 def get_settings() -> Settings:

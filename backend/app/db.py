@@ -24,6 +24,15 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False, future=True)
 
 
+def get_session_factory() -> sessionmaker[Session]:
+    """FastAPI dependency for flows that need their own transaction boundaries.
+
+    Idempotent writes claim a key in one transaction and do the work in the
+    next, so they cannot share the request-scoped session below.
+    """
+    return SessionLocal
+
+
 def get_session() -> Iterator[Session]:
     """FastAPI dependency: one session (and one DB transaction) per request."""
     session = SessionLocal()

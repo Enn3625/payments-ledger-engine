@@ -15,14 +15,25 @@ from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import get_settings
-from app.models import Account, AccountType
+from app.models import Account, AccountType, User, UserRole
+from app.services.auth import create_access_token, create_user
 
 BACKEND_ROOT = Path(__file__).resolve().parents[1]
-TABLES = ("ledger_entries", "transactions", "accounts")
+TABLES = (
+    "users",
+    "anomaly_flags",
+    "webhook_events",
+    "idempotency_keys",
+    "payment_intents",
+    "ledger_entries",
+    "transactions",
+    "accounts",
+)
 
 
 def _test_database_url() -> str:
@@ -58,16 +69,119 @@ def engine() -> Iterator[Engine]:
 
 
 @pytest.fixture
-def session(engine: Engine) -> Iterator[Session]:
-    factory = sessionmaker(bind=engine, expire_on_commit=False, future=True)
-    session = factory()
+def session_factory(engine: Engine) -> sessionmaker[Session]:
+    return sessionmaker(bind=engine, expire_on_commit=False, future=True)
+
+
+@pytest.fixture(autouse=True)
+def _clean_database(engine: Engine) -> Iterator[None]:
+    """Wipe every table after each test.
+
+    Autouse and last to tear down, so it runs after any session fixture has
+    closed its transaction -- TRUNCATE would otherwise block on those locks.
+    """
+    yield
+    with engine.begin() as connection:
+        connection.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+
+
+@pytest.fixture
+def session(session_factory: sessionmaker[Session]) -> Iterator[Session]:
+    session = session_factory()
     try:
         yield session
     finally:
         session.rollback()
         session.close()
-        with engine.begin() as connection:
-            connection.execute(text(f"TRUNCATE {', '.join(TABLES)} CASCADE"))
+
+
+@pytest.fixture
+def client_factory(session_factory: sessionmaker[Session]):
+    """Builds HTTP clients wired to the test database, optionally authenticated."""
+    from app.db import get_session, get_session_factory
+    from app.main import app
+
+    def override_factory() -> sessionmaker[Session]:
+        return session_factory
+
+    def override_session() -> Iterator[Session]:
+        request_session = session_factory()
+        try:
+            yield request_session
+            request_session.commit()
+        except Exception:
+            request_session.rollback()
+            raise
+        finally:
+            request_session.close()
+
+    app.dependency_overrides[get_session_factory] = override_factory
+    app.dependency_overrides[get_session] = override_session
+
+    opened: list[TestClient] = []
+
+    def build(token: str | None = None) -> TestClient:
+        test_client = TestClient(app)
+        if token is not None:
+            test_client.headers["Authorization"] = f"Bearer {token}"
+        test_client.__enter__()
+        opened.append(test_client)
+        return test_client
+
+    try:
+        yield build
+    finally:
+        for test_client in opened:
+            test_client.__exit__(None, None, None)
+        app.dependency_overrides.clear()
+
+
+def make_user(session: Session, *, email: str, password: str, role: UserRole) -> User:
+    user = create_user(session, email=email, password=password, role=role)
+    session.commit()
+    return user
+
+
+@pytest.fixture
+def admin_user(session: Session) -> User:
+    return make_user(
+        session, email="admin@example.com", password="admin-password", role=UserRole.ADMIN
+    )
+
+
+@pytest.fixture
+def viewer_user(session: Session) -> User:
+    return make_user(
+        session, email="viewer@example.com", password="viewer-password", role=UserRole.VIEWER
+    )
+
+
+@pytest.fixture
+def admin_token(admin_user: User) -> str:
+    token, _ = create_access_token(admin_user, get_settings())
+    return token
+
+
+@pytest.fixture
+def viewer_token(viewer_user: User) -> str:
+    token, _ = create_access_token(viewer_user, get_settings())
+    return token
+
+
+@pytest.fixture
+def client(client_factory, admin_token: str) -> TestClient:
+    """The default client is an admin: most tests are about behaviour, not access."""
+    return client_factory(admin_token)
+
+
+@pytest.fixture
+def viewer_client(client_factory, viewer_token: str) -> TestClient:
+    return client_factory(viewer_token)
+
+
+@pytest.fixture
+def anonymous_client(client_factory) -> TestClient:
+    return client_factory()
 
 
 def make_account(
@@ -104,3 +218,15 @@ def payable(session: Session) -> Account:
 def revenue(session: Session) -> Account:
     """Revenue account: platform fees earned."""
     return make_account(session, name="revenue:platform_fees", type=AccountType.REVENUE)
+
+
+@pytest.fixture
+def chart_of_accounts(cash: Account, payable: Account, revenue: Account) -> dict[str, Account]:
+    """The accounts a capture posting needs, under their configured names."""
+    return {"cash": cash, "payable": payable, "revenue": revenue}
+
+
+@pytest.fixture
+def merchant(payable: Account) -> Account:
+    """The account a payment intent settles into."""
+    return payable
