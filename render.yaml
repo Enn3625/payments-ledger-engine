@@ -1,0 +1,40 @@
+# Render blueprint: one API service plus a managed PostgreSQL.
+#
+# Deploy with: New > Blueprint, point it at this repository.
+#
+# CORS_ORIGINS is intentionally left unset here. It has to be the Vercel URL,
+# which does not exist until the dashboard is deployed, and a wildcard would
+# let any site on the internet call this API with a user's token.
+services:
+  - type: web
+    name: payments-ledger-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    region: singapore
+    healthCheckPath: /health
+    envVars:
+      # Any value outside {local, test, ci} makes the app refuse to boot with
+      # the development secrets. That refusal is the point.
+      - key: ENVIRONMENT
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: payments-ledger-db
+          property: connectionString
+      # Generated once by Render and never printed in a build log.
+      - key: WEBHOOK_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+      # Set this to the deployed dashboard origin, e.g.
+      # https://payments-ledger-dashboard.vercel.app
+      - key: CORS_ORIGINS
+        sync: false
+
+databases:
+  - name: payments-ledger-db
+    plan: free
+    region: singapore
+    postgresMajorVersion: "16"
