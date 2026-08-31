@@ -18,5 +18,21 @@ services:
       timeout: 3s
       retries: 10
 
+  # One command for the whole backend. The dashboard stays on `npm run dev`
+  # so hot reload keeps working; `docker compose up` is about the API + DB.
+  api:
+    build:
+      context: ./backend
+    container_name: ledger-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql+psycopg://ledger:ledger@db:5432/ledger
+      ENVIRONMENT: local
+      CORS_ORIGINS: http://localhost:5173,http://127.0.0.1:5173
+    ports:
+      - "8000:8000"
+
 volumes:
   ledger-pgdata:

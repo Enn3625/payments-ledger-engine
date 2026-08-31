@@ -2,7 +2,20 @@
 
 from functools import lru_cache
 
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+#: Fine for local development, fatal anywhere else. Anyone holding these can
+#: forge a webhook or mint an admin token.
+DEV_WEBHOOK_SECRET = "whsec_local_dev_secret"
+DEV_JWT_SECRET = "jwt_local_dev_secret_change_me"
+
+#: Environments where the dev defaults are acceptable.
+UNSAFE_SECRETS_ALLOWED_IN = frozenset({"local", "test", "ci"})
+
+
+class UnsafeConfigurationError(RuntimeError):
+    """A deployed environment is trying to boot with development secrets."""
 
 
 class Settings(BaseSettings):
@@ -22,7 +35,7 @@ class Settings(BaseSettings):
 
     # Shared secret the payment provider signs webhook payloads with. Override
     # in every deployed environment -- this default is for local dev only.
-    webhook_secret: str = "whsec_local_dev_secret"
+    webhook_secret: str = DEV_WEBHOOK_SECRET
     # Signatures older than this are refused, so a captured payload cannot be
     # replayed days later even though its HMAC is still valid.
     webhook_timestamp_tolerance_seconds: int = 300
@@ -42,7 +55,7 @@ class Settings(BaseSettings):
 
     # JWT signing. Override in every deployed environment: anyone holding this
     # value can mint a valid admin token.
-    jwt_secret: str = "jwt_local_dev_secret_change_me"
+    jwt_secret: str = DEV_JWT_SECRET
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
 
@@ -54,6 +67,45 @@ class Settings(BaseSettings):
     @property
     def cors_origin_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
+
+    @property
+    def is_deployed(self) -> bool:
+        return self.environment.strip().lower() not in UNSAFE_SECRETS_ALLOWED_IN
+
+    @field_validator("database_url", "test_database_url", mode="after")
+    @classmethod
+    def _use_psycopg_driver(cls, url: str) -> str:
+        """Normalise the scheme managed Postgres providers hand out.
+
+        Render and Railway supply `postgres://` or `postgresql://`. SQLAlchemy
+        resolves both to psycopg2, which is not installed, and the failure looks
+        like a missing package rather than a URL problem.
+        """
+        for prefix in ("postgres://", "postgresql://"):
+            if url.startswith(prefix):
+                return "postgresql+psycopg://" + url[len(prefix) :]
+        return url
+
+    @model_validator(mode="after")
+    def _refuse_dev_secrets_when_deployed(self) -> "Settings":
+        if not self.is_deployed:
+            return self
+
+        weak = [
+            name
+            for name, value, default in (
+                ("WEBHOOK_SECRET", self.webhook_secret, DEV_WEBHOOK_SECRET),
+                ("JWT_SECRET", self.jwt_secret, DEV_JWT_SECRET),
+            )
+            if value == default
+        ]
+        if weak:
+            raise UnsafeConfigurationError(
+                f"ENVIRONMENT={self.environment!r} but {' and '.join(weak)} still "
+                "hold the development default. Set real secrets before deploying; "
+                "anyone with these values can forge a webhook or mint an admin token."
+            )
+        return self
 
 
 @lru_cache
