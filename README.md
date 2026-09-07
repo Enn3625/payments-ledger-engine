@@ -84,7 +84,7 @@ actually *moved*. Creating an intent writes nothing to `ledger_entries`.
 | Dashboard | React 18 + TypeScript, Vite |
 | Tests | pytest against a real PostgreSQL |
 | CI | GitHub Actions |
-| Hosting | Render (API + Postgres), Vercel (dashboard) |
+| Hosting | Render (API), Neon (Postgres), Vercel (dashboard) |
 
 ## Key metrics
 
@@ -137,19 +137,30 @@ More detail in [backend/README.md](backend/README.md) and
 
 ## Deploy
 
-**API + database — Render.** [render.yaml](render.yaml) is a blueprint: *New →
-Blueprint*, point it at this repo. It provisions a Postgres instance, wires
-`DATABASE_URL`, and generates `WEBHOOK_SECRET` and `JWT_SECRET`. Migrations run
-on boot.
+**Database — Neon.** A free Postgres 16 project. Render's own free database is
+deleted after 30 days, which is not a property you want in a link on a CV, so
+state lives on Neon and only the stateless API runs on Render. Copy the
+*pooled* connection string (the host contains `-pooler`).
 
-Then set `CORS_ORIGINS` to the dashboard URL — it is deliberately not in the
-blueprint, because it does not exist until the frontend is deployed, and a
-wildcard would let any site on the internet call the API with a user's token.
+**API — Render.** [render.yaml](render.yaml) is a blueprint: *New → Blueprint*,
+point it at this repo. It generates `WEBHOOK_SECRET` and `JWT_SECRET`, and asks
+for two values that cannot exist yet: `DATABASE_URL` (from Neon) and
+`CORS_ORIGINS` (the dashboard URL, once Vercel has one). A wildcard origin would
+let any site on the internet call the API with a user's token. Migrations run on
+boot.
 
 Seed the deployed database once, from the Render shell:
 
 ```bash
 python -m scripts.seed_demo
+```
+
+Or from a laptop, pointing at Neon directly — `ENVIRONMENT=local` because the
+seed needs no deployment secrets, and the URL scheme is normalised for psycopg
+either way:
+
+```bash
+DATABASE_URL="<neon-pooled-url>" ENVIRONMENT=local python -m scripts.seed_demo
 ```
 
 **Dashboard — Vercel.** Import the repo, set the root directory to `frontend`,

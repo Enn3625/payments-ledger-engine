@@ -1,10 +1,16 @@
-# Render blueprint: one API service plus a managed PostgreSQL.
+# Render blueprint: the API service only. PostgreSQL is hosted on Neon.
 #
 # Deploy with: New > Blueprint, point it at this repository.
 #
-# CORS_ORIGINS is intentionally left unset here. It has to be the Vercel URL,
-# which does not exist until the dashboard is deployed, and a wildcard would
-# let any site on the internet call this API with a user's token.
+# Render's own free Postgres is deleted after 30 days, which is fatal for a
+# demo link that has to keep working. Neon's free tier does not expire, so the
+# database lives there and only the stateless API runs here.
+#
+# Two values are deliberately left unset (`sync: false`), because neither
+# exists until something else has been deployed:
+#   DATABASE_URL  - the Neon connection string
+#   CORS_ORIGINS  - the Vercel dashboard origin. A wildcard would let any site
+#                   on the internet call this API with a user's token.
 services:
   - type: web
     name: payments-ledger-api
@@ -19,10 +25,10 @@ services:
       # the development secrets. That refusal is the point.
       - key: ENVIRONMENT
         value: production
+      # Neon connection string, from the Neon dashboard. Use the *pooled*
+      # host (it contains `-pooler`) and keep `?sslmode=require`.
       - key: DATABASE_URL
-        fromDatabase:
-          name: payments-ledger-db
-          property: connectionString
+        sync: false
       # Generated once by Render and never printed in a build log.
       - key: WEBHOOK_SECRET
         generateValue: true
@@ -32,9 +38,3 @@ services:
       # https://payments-ledger-dashboard.vercel.app
       - key: CORS_ORIGINS
         sync: false
-
-databases:
-  - name: payments-ledger-db
-    plan: free
-    region: singapore
-    postgresMajorVersion: "16"
